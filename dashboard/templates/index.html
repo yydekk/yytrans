@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Traffic Analysis Dashboard</title>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #0f1419;
+      min-height: 100vh;
+      padding: 20px;
+      color: #e2e8f0;
+    }
+
+    .container {
+      max-width: 1600px;
+      margin: 0 auto;
+      background: #1a1f2e;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+      border: 1px solid #2d3748;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      color: #e2e8f0;
+      padding: 30px 40px;
+      text-align: center;
+      border-bottom: 1px solid #2d3748;
+      position: relative;
+    }
+
+    .header h1 {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+      color: #e2e8f0;
+      font-weight: 600;
+    }
+
+    .header p {
+      font-size: 1.1em;
+      color: #94a3b8;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      padding: 30px 40px;
+      background: #1a1f2e;
+      border-bottom: 1px solid #2d3748;
+    }
+
+    .stat-card {
+      text-align: center;
+      padding: 20px;
+      background: #0f172a;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+      border: 1px solid #2d3748;
+    }
+
+    .stat-card h3 {
+      font-size: 2.5em;
+      color: #6366f1;
+      margin-bottom: 5px;
+    }
+
+    .stat-card p {
+      color: #94a3b8;
+      font-size: 0.9em;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .filters {
+      padding: 20px 40px;
+      background: #1a1f2e;
+      border-bottom: 1px solid #2d3748;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      align-items: center;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .filter-group label {
+      font-size: 0.85em;
+      color: #94a3b8;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .filter-group select,
+    .filter-group input {
+      padding: 8px 12px;
+      border: 1px solid #2d3748;
+      border-radius: 8px;
+      font-size: 0.9em;
+      transition: border-color 0.3s;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+
+    .filter-group select:focus,
+    .filter-group input:focus {
+      outline: none;
+      border-color: #6366f1;
+    }
+
+    .content {
+      padding: 40px;
+      background: #1a1f2e;
+    }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .chart-container {
+      background: #0f172a;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+      border: 1px solid #2d3748;
+    }
+
+    .chart-container h3 {
+      margin-bottom: 15px;
+      color: #e2e8f0;
+      font-size: 1.2em;
+      font-weight: 600;
+    }
+
+    .full-width {
+      grid-column: 1 / -1;
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+      margin-top: 20px;
+      border: 1px solid #2d3748;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      background: #0f172a;
+      font-size: 0.95em;
+    }
+
+    thead {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      color: #e2e8f0;
+    }
+
+    th {
+      padding: 18px 15px;
+      text-align: left;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-size: 0.85em;
+      color: #e2e8f0;
+    }
+
+    td {
+      padding: 15px;
+      border-bottom: 1px solid #2d3748;
+      color: #e2e8f0;
+    }
+
+    /* Эффект при наведении на строку: подъем и тень без изменения цвета */
+    tbody tr {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      position: relative;
+      z-index: 0;
+      background-clip: padding-box;
+    }
+
+    /* Подъем всей строки, без смены цвета */
+    tbody tr:hover {
+      background: inherit;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.14);
+      z-index: 5;
+    }
+
+    .selected-row {
+      outline: 2px solid rgba(0,0,0,0.35);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+      position: relative;
+      z-index: 6;
+    }
+
+    /* Фикс цвета при наведении — сохраняем исходный фон для каждого уровня */
+    tbody tr.alert-critical:hover {
+      background: linear-gradient(90deg, rgba(239, 68, 68, 0.25) 0%, rgba(220, 38, 38, 0.25) 100%);
+    }
+    tbody tr.alert-high:hover {
+      background: linear-gradient(90deg, rgba(245, 158, 11, 0.25) 0%, rgba(217, 119, 6, 0.25) 100%);
+    }
+    tbody tr.alert-medium:hover {
+      background: linear-gradient(90deg, rgba(251, 191, 36, 0.2) 0%, rgba(245, 158, 11, 0.2) 100%);
+    }
+    tbody tr.alert-low:hover {
+      background: linear-gradient(90deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.2) 100%);
+    }
+    tbody tr.alert-normal:hover {
+      background: #1e293b;
+    }
+
+    /* Фикс: не менять цвет ячеек с уровнями при наведении */
+    .alert-critical:hover,
+    .alert-high:hover,
+    .alert-medium:hover,
+    .alert-low:hover,
+    .alert-normal:hover {
+      background: inherit;
+      transform: none;
+    }
+
+    /* Цветовая индикация уровней критичности */
+    .alert-critical {
+      background: linear-gradient(90deg, rgba(239, 68, 68, 0.2) 0%, rgba(220, 38, 38, 0.2) 100%);
+      color: #f87171 !important;
+      font-weight: 600;
+      border-left: 3px solid #ef4444;
+    }
+
+    .alert-high {
+      background: linear-gradient(90deg, rgba(245, 158, 11, 0.2) 0%, rgba(217, 119, 6, 0.2) 100%);
+      color: #fbbf24 !important;
+      font-weight: 600;
+      border-left: 3px solid #f59e0b;
+    }
+
+    .alert-medium {
+      background: linear-gradient(90deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.15) 100%);
+      color: #fcd34d !important;
+      font-weight: 600;
+      border-left: 3px solid #fbbf24;
+    }
+
+    .alert-low {
+      background: linear-gradient(90deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.15) 100%);
+      color: #34d399 !important;
+      font-weight: 600;
+      border-left: 3px solid #10b981;
+    }
+
+    .alert-normal {
+      background: #0f172a;
+      color: #94a3b8 !important;
+    }
+
+    .ip-cell {
+      font-family: 'Courier New', monospace;
+      font-weight: 600;
+      color: #818cf8;
+    }
+
+    .port-cell {
+      font-family: 'Courier New', monospace;
+      font-weight: 600;
+      color: #a78bfa;
+    }
+
+    .score-cell {
+      font-weight: 700;
+      font-size: 1.1em;
+      text-align: center;
+      color: #e2e8f0;
+    }
+
+    .no-data {
+      text-align: center;
+      padding: 60px;
+      color: #94a3b8;
+      font-size: 1.2em;
+    }
+
+    .top-ips-list {
+      list-style: none;
+      padding: 0;
+    }
+
+    .top-ips-list li {
+      padding: 10px;
+      margin-bottom: 8px;
+      background: #0f172a;
+      border: 1px solid #2d3748;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .top-ips-list li .ip {
+      font-family: 'Courier New', monospace;
+      font-weight: 600;
+      color: #818cf8;
+    }
+
+    .top-ips-list li .count {
+      background: rgba(99, 102, 241, 0.2);
+      color: #818cf8;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      padding: 5px 12px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9em;
+    }
+
+    @media (max-width: 1200px) {
+      .charts-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .stats {
+        grid-template-columns: 1fr;
+      }
+
+      .filters {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .header h1 {
+        font-size: 1.8em;
+      }
+
+      .content {
+        padding: 20px;
+      }
+
+      table {
+        font-size: 0.85em;
+      }
+
+      th, td {
+        padding: 10px 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header" style="position:relative;">
+      <a href="/" style="position:absolute;left:30px;top:50%;transform:translateY(-50%);color:#e2e8f0;text-decoration:none;font-size:1.2em;opacity:0.9;padding:10px 15px;background:rgba(99, 102, 241, 0.2);border:1px solid rgba(99, 102, 241, 0.3);border-radius:8px;transition:all 0.3s;" onmouseover="this.style.background='rgba(99, 102, 241, 0.3)';this.style.borderColor='rgba(99, 102, 241, 0.5)';" onmouseout="this.style.background='rgba(99, 102, 241, 0.2)';this.style.borderColor='rgba(99, 102, 241, 0.3)';">← Назад</a>
+      <h1>Traffic Analysis Dashboard</h1>
+      <p>{% if upload_info %}{{ upload_info.filename }}{% else %}Анализ сетевого трафика и обнаружение аномалий{% endif %}</p>
+    </div>
+
+    {% if has_data %}
+    <div class="stats">
+      <div class="stat-card">
+        <h3>{{ stats.total_flows }}</h3>
+        <p>Всего потоков</p>
+      </div>
+      <div class="stat-card">
+        <h3 style="color: #f87171;">{{ stats.num_anomalies }}</h3>
+        <p>Аномалий обнаружено</p>
+      </div>
+      <div class="stat-card">
+        <h3 style="color: #fbbf24;">{{ stats.anomaly_percentage }}%</h3>
+        <p>Процент аномалий</p>
+      </div>
+      <div class="stat-card">
+        <h3 style="color: #f87171;">{{ stats.critical }}</h3>
+        <p>Критичных</p>
+      </div>
+      <div class="stat-card">
+        <h3 style="color: #fbbf24;">{{ stats.high }}</h3>
+        <p>Высокий уровень</p>
+      </div>
+      <div class="stat-card">
+        <h3 style="color: #fcd34d;">{{ stats.medium }}</h3>
+        <p>Средний уровень</p>
+      </div>
+    </div>
+
+    <div class="filters">
+      <div class="filter-group">
+        <label>Уровень критичности</label>
+        <select id="filter-alert-level">
+          <option value="ALL">Все уровни</option>
+          <option value="CRITICAL">Критичный</option>
+          <option value="HIGH">Высокий</option>
+          <option value="MEDIUM">Средний</option>
+          <option value="LOW">Низкий</option>
+          <option value="NORMAL">Нормальный</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>IP адрес</label>
+        <input type="text" id="filter-ip" placeholder="192.168.1.1">
+      </div>
+      <div class="filter-group">
+        <label>Начало периода</label>
+        <input type="datetime-local" id="filter-start-time">
+      </div>
+      <div class="filter-group">
+        <label>Конец периода</label>
+        <input type="datetime-local" id="filter-end-time">
+      </div>
+      <div class="filter-group" style="align-self: flex-end;">
+        <button onclick="applyFilters()" style="padding: 10px 20px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 15px rgba(99, 102, 241, 0.4)';" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='none';">
+          Применить фильтры
+        </button>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="charts-grid">
+        <div class="chart-container">
+          <h3>Топ-10 подозрительных IP</h3>
+          <ul class="top-ips-list">
+            {% for ip_data in top_ips[:10] %}
+            <li>
+              <span class="ip">{{ ip_data.ip }}</span>
+              <span class="count">{{ ip_data.count }} аномалий</span>
+            </li>
+            {% endfor %}
+            {% if top_ips|length == 0 %}
+            <li style="color: #999;">Нет данных</li>
+            {% endif %}
+          </ul>
+        </div>
+
+        <div class="chart-container">
+          <h3>Распределение по типам</h3>
+          <div id="anomaly-types-chart"></div>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Время</th>
+              <th>Источник IP</th>
+              <th>Назначение IP</th>
+              <th>Порт ист.</th>
+              <th>Порт назн.</th>
+              <th>Протокол</th>
+              <th>Пакетов</th>
+              <th>Оценка</th>
+              <th>Уровень</th>
+            </tr>
+          </thead>
+          <tbody id="data-table">
+            {% for row in data %}
+            {% set alert_class = 'alert-' + (row.alert_level|lower if row.alert_level else 'normal') %}
+            <tr class="{{ alert_class }}">
+              <td>{{ row.timestamp|float|round(2) if row.timestamp else '—' }}</td>
+              <td class="ip-cell">{{ row.src_ip }}</td>
+              <td class="ip-cell">{{ row.dst_ip }}</td>
+              <td class="port-cell">{{ row.src_port }}</td>
+              <td class="port-cell">{{ row.dst_port }}</td>
+              <td>{{ row.protocol }}</td>
+              <td>{{ row.packet_count }}</td>
+              <td class="score-cell">{{ "%.3f"|format(row.anomaly_score|float) if row.anomaly_score else '—' }}</td>
+              <td><strong>{{ row.alert_level if row.alert_level else 'NORMAL' }}</strong></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-wrapper" style="margin-top:20px;">
+        <h3 style="margin: 15px; color:#e2e8f0; font-weight:600;">HTTP запросы</h3>
+        <table id="packets-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Время</th>
+              <th>Источник IP</th>
+              <th>Назначение IP</th>
+              <th>Порт ист.</th>
+              <th>Порт назн.</th>
+              <th>Протокол</th>
+              <th>Длина</th>
+            </tr>
+          </thead>
+          <tbody id="packets-body">
+            <tr><td colspan="8" class="no-data">Загрузка...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% else %}
+    <div class="content">
+      <div class="no-data">
+        <p>Нет данных для отображения</p>
+        <p style="font-size: 0.9em; margin-top: 10px; color: #999;">
+          Запустите анализ трафика для получения результатов
+        </p>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Модалка для просмотра пакета / потока -->
+  <div id="packet-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:2000; align-items:center; justify-content:center;">
+    <div style="background:#1a1f2e; border:1px solid #2d3748; max-width:1000px; width:90%; max-height:85vh; overflow:auto; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.5); padding:20px; position:relative;">
+      <button onclick="closePacketModal()" style="position:absolute; top:10px; right:10px; background:rgba(239, 68, 68, 0.2); color:#f87171; border:1px solid rgba(239, 68, 68, 0.3); padding:6px 10px; border-radius:6px; cursor:pointer; transition:all 0.3s;" onmouseover="this.style.background='rgba(239, 68, 68, 0.3)';" onmouseout="this.style.background='rgba(239, 68, 68, 0.2)';">Закрыть</button>
+      <h3 id="packet-title" style="margin-bottom:10px; color:#e2e8f0;">Детали</h3>
+      <pre id="packet-summary" style="background:#0f172a; color:#e2e8f0; padding:10px; border-radius:8px; overflow:auto; border:1px solid #2d3748;"></pre>
+      <h4 style="color:#e2e8f0; margin-top:15px;">Payload (hex, обрезано)</h4>
+      <pre id="packet-payload" style="background:#0b1021; color:#7fffd4; padding:10px; border-radius:8px; overflow:auto; font-size:0.9em; border:1px solid #2d3748;"></pre>
+      <div id="packet-details-html" style="margin-top:10px; padding:10px; background:#0f172a; border:1px solid #2d3748; border-radius:8px; display:none; white-space:pre-wrap; word-break:break-word; color:#e2e8f0;"></div>
+      <button id="packet-show-all-btn" onclick="toggleFullInfo()" style="margin-top:10px; padding:8px 12px; background:linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color:#fff; border:none; border-radius:8px; cursor:pointer; display:none; transition:all 0.3s;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 15px rgba(99, 102, 241, 0.4)';" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='none';">Показать всю информацию</button>
+    </div>
+  </div>
+
+  <script>
+    // Данные для графиков
+    const anomalyTypes = JSON.parse('{{ anomaly_types|tojson|safe }}');
+
+    // График распределения по типам
+    if (anomalyTypes && Object.keys(anomalyTypes).length > 0) {
+      const types = Object.keys(anomalyTypes);
+      const counts = Object.values(anomalyTypes);
+
+      const trace = {
+        x: types,
+        y: counts,
+        type: 'bar',
+        marker: {
+          color: ['#f87171', '#fbbf24', '#fcd34d', '#34d399', '#818cf8'],
+          line: { color: '#2d3748', width: 1 }
+        }
+      };
+
+      Plotly.newPlot('anomaly-types-chart', [trace], {
+        title: '',
+        xaxis: { 
+          title: 'Тип аномалии',
+          titlefont: { color: '#e2e8f0' },
+          tickfont: { color: '#94a3b8' },
+          gridcolor: '#2d3748',
+          linecolor: '#2d3748',
+          zerolinecolor: '#2d3748'
+        },
+        yaxis: { 
+          title: 'Количество',
+          titlefont: { color: '#e2e8f0' },
+          tickfont: { color: '#94a3b8' },
+          gridcolor: '#2d3748',
+          linecolor: '#2d3748',
+          zerolinecolor: '#2d3748'
+        },
+        margin: { l: 50, r: 50, t: 30, b: 80 },
+        paper_bgcolor: '#0f172a',
+        plot_bgcolor: '#0f172a',
+        font: { color: '#e2e8f0' }
+      });
+    }
+
+    let packetsCache = [];
+    let flowRows = [];
+    let fullInfoHtml = "";
+    let selectedRowEl = null;
+
+    // Загрузка пакетов
+    const uploadId = '{{ upload_id | default("") }}';
+    
+    function loadPackets() {
+      const url = uploadId ? `/api/packets/${uploadId}?limit=500` : '/api/packets?limit=500';
+      fetch(url)
+        .then(r => r.json())
+        .then(res => {
+          packetsCache = res.data || [];
+          // Фильтруем только HTTP запросы
+          const httpPackets = packetsCache.filter(pkt => 
+            pkt.http_info && pkt.http_info.request_line
+          );
+          renderPacketsTable(httpPackets);
+        })
+        .catch(() => {
+          const tbody = document.getElementById('packets-body');
+          tbody.innerHTML = '<tr><td colspan="8" class="no-data">Ошибка загрузки пакетов</td></tr>';
+        });
+    }
+
+    // Рендер HTTP запросов
+    function renderPacketsTable(packets) {
+      const tbody = document.getElementById('packets-body');
+      tbody.innerHTML = '';
+      if (!packets || packets.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="no-data">Нет HTTP запросов</td></tr>';
+        return;
+      }
+      packets.forEach(pkt => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${pkt.id}</td>
+          <td>${pkt.timestamp ? Number(pkt.timestamp).toFixed(6) : '—'}</td>
+          <td class="ip-cell">${pkt.src_ip || '—'}</td>
+          <td class="ip-cell">${pkt.dst_ip || '—'}</td>
+          <td class="port-cell">${pkt.src_port || '—'}</td>
+          <td class="port-cell">${pkt.dst_port || '—'}</td>
+          <td>${pkt.protocol || '—'}</td>
+          <td>${pkt.length || '—'}</td>
+        `;
+        tr.style.cursor = 'pointer';
+        tr.addEventListener('click', () => {
+          selectRow(tr);
+          showPacket(pkt);
+        });
+        tbody.appendChild(tr);
+      });
+    }
+
+    function showPacket(pkt) {
+      fullInfoHtml = pkt.details_html || '';
+      document.getElementById('packet-title').textContent = `Пакет #${pkt.id}`;
+      document.getElementById('packet-summary').textContent = `
+Время: ${pkt.timestamp ? Number(pkt.timestamp).toFixed(6) : '—'}
+Источник: ${pkt.src_ip || '—'}:${pkt.src_port || '—'}
+Назначение: ${pkt.dst_ip || '—'}:${pkt.dst_port || '—'}
+Протокол: ${pkt.protocol || '—'}
+Длина: ${pkt.length || '—'}
+Summary: ${pkt.summary || ''}`.trim();
+      document.getElementById('packet-payload').textContent = pkt.payload_hex || '(нет данных)';
+      const htmlDiv = document.getElementById('packet-details-html');
+      const btn = document.getElementById('packet-show-all-btn');
+      if (pkt.details_html) {
+        htmlDiv.innerHTML = pkt.details_html;
+        htmlDiv.style.display = 'none';
+        btn.style.display = 'inline-block';
+      } else {
+        htmlDiv.innerHTML = '<em>Полезной информации нет</em>';
+        htmlDiv.style.display = 'block';
+        btn.style.display = 'none';
+      }
+      document.getElementById('packet-modal').style.display = 'flex';
+    }
+
+    function closePacketModal() {
+      document.getElementById('packet-modal').style.display = 'none';
+    }
+
+    function toggleFullInfo() {
+      const htmlDiv = document.getElementById('packet-details-html');
+      const btn = document.getElementById('packet-show-all-btn');
+      if (!fullInfoHtml) {
+        htmlDiv.innerHTML = '<em>Полезной информации нет</em>';
+        htmlDiv.style.display = 'block';
+        btn.textContent = 'Скрыть';
+        return;
+      }
+      if (htmlDiv.style.display === 'block') {
+        htmlDiv.style.display = 'none';
+        btn.textContent = 'Показать всю информацию';
+      } else {
+        htmlDiv.innerHTML = fullInfoHtml;
+        htmlDiv.style.display = 'block';
+        btn.textContent = 'Скрыть';
+      }
+    }
+
+    // Функция применения фильтров (используем IP для пакетов и потоки)
+    function applyFilters() {
+      const ipAddress = document.getElementById('filter-ip').value;
+      const alertLevel = document.getElementById('filter-alert-level').value;
+      const startTime = document.getElementById('filter-start-time').value;
+      const endTime = document.getElementById('filter-end-time').value;
+
+      const params = new URLSearchParams();
+      if (alertLevel && alertLevel !== 'ALL') params.append('alert_level', alertLevel);
+      if (ipAddress) params.append('ip_address', ipAddress);
+      if (startTime) params.append('start_time', startTime);
+      if (endTime) params.append('end_time', endTime);
+
+      const dataUrl = uploadId ? `/api/data/${uploadId}?${params.toString()}` : `/api/data?${params.toString()}`;
+      fetch(dataUrl)
+        .then(r => r.json())
+        .then(res => {
+          flowRows = res.data || [];
+          renderFlowsTable(flowRows);
+        })
+        .catch(() => {
+          const tbody = document.getElementById('data-table');
+          tbody.innerHTML = '<tr><td colspan="9" class="no-data">Ошибка загрузки данных</td></tr>';
+        });
+
+      // Фильтруем только HTTP запросы
+      let filtered = packetsCache.filter(pkt => 
+        pkt.http_info && pkt.http_info.request_line
+      );
+      if (ipAddress) {
+        filtered = filtered.filter(pkt => pkt.src_ip === ipAddress || pkt.dst_ip === ipAddress);
+      }
+      renderPacketsTable(filtered);
+    }
+
+    function renderFlowsTable(rows) {
+      const tbody = document.getElementById('data-table');
+      tbody.innerHTML = '';
+      if (!rows || rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="no-data">Нет данных, соответствующих фильтрам</td></tr>';
+        return;
+      }
+      rows.forEach(row => {
+        const alertClass = 'alert-' + (row.alert_level ? row.alert_level.toLowerCase() : 'normal');
+        const tr = document.createElement('tr');
+        tr.className = alertClass;
+        tr.innerHTML = `
+          <td>${row.timestamp ? parseFloat(row.timestamp).toFixed(2) : '—'}</td>
+          <td class="ip-cell">${row.src_ip || '—'}</td>
+          <td class="ip-cell">${row.dst_ip || '—'}</td>
+          <td class="port-cell">${row.src_port || '—'}</td>
+          <td class="port-cell">${row.dst_port || '—'}</td>
+          <td>${row.protocol || '—'}</td>
+          <td>${row.packet_count || '—'}</td>
+          <td class="score-cell">${row.anomaly_score ? parseFloat(row.anomaly_score).toFixed(3) : '—'}</td>
+          <td><strong>${row.alert_level || 'NORMAL'}</strong></td>
+        `;
+        tr.style.cursor = 'pointer';
+        tr.addEventListener('click', () => {
+          selectRow(tr);
+          showFlow(row);
+        });
+        tbody.appendChild(tr);
+      });
+    }
+
+    // При клике по потоку — ищем первый подходящий пакет и показываем
+    function showFlow(row) {
+      const match = packetsCache.find(p =>
+        p.src_ip === row.src_ip &&
+        p.dst_ip === row.dst_ip &&
+        p.src_port === row.src_port &&
+        p.dst_port === row.dst_port &&
+        p.protocol === row.protocol
+      );
+
+      if (!match) {
+        fullInfoHtml = '';
+        document.getElementById('packet-title').textContent = 'Детали потока';
+        document.getElementById('packet-summary').textContent = `
+Время: ${row.timestamp ? parseFloat(row.timestamp).toFixed(2) : '—'}
+Источник: ${row.src_ip || '—'}:${row.src_port || '—'}
+Назначение: ${row.dst_ip || '—'}:${row.dst_port || '—'}
+Протокол: ${row.protocol || '—'}
+Пакетов: ${row.packet_count || '—'}
+Оценка: ${row.anomaly_score ? parseFloat(row.anomaly_score).toFixed(3) : '—'}
+Уровень: ${row.alert_level || 'NORMAL'}
+Payload: нет данных`.trim();
+        document.getElementById('packet-payload').textContent = '(нет данных)';
+        const htmlDiv = document.getElementById('packet-details-html');
+        const btn = document.getElementById('packet-show-all-btn');
+        htmlDiv.innerHTML = '<em>Полезной информации нет</em>';
+        htmlDiv.style.display = 'block';
+        btn.style.display = 'none';
+        document.getElementById('packet-modal').style.display = 'flex';
+        return;
+      }
+
+      showPacket(match);
+    }
+
+    // Инициализация
+    document.addEventListener('DOMContentLoaded', () => {
+      loadPackets();
+      // Клики по overlay для закрытия
+      const modal = document.getElementById('packet-modal');
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          closePacketModal();
+        }
+      });
+      // Подсветка уже отрендеренных строк (первичная таблица потоков)
+      const initialRows = document.querySelectorAll('#data-table tr');
+      initialRows.forEach((tr, idx) => {
+        tr.style.cursor = 'pointer';
+        tr.addEventListener('click', () => {
+          selectRow(tr);
+        });
+      });
+    });
+
+    function selectRow(tr) {
+      if (selectedRowEl && selectedRowEl !== tr) {
+        selectedRowEl.classList.remove('selected-row');
+      }
+      selectedRowEl = tr;
+      tr.classList.add('selected-row');
+    }
+  </script>
+</body>
+</html>

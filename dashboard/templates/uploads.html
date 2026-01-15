@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Traffic Analysis - Загрузка файлов</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #0f1419;
+      min-height: 100vh;
+      padding: 20px;
+      color: #e2e8f0;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: #1a1f2e;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+      border: 1px solid #2d3748;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      color: #e2e8f0;
+      padding: 40px;
+      text-align: center;
+      border-bottom: 1px solid #2d3748;
+    }
+
+    .header h1 {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+      color: #e2e8f0;
+      font-weight: 600;
+    }
+
+    .header p {
+      font-size: 1.1em;
+      color: #94a3b8;
+    }
+
+    .content {
+      padding: 40px;
+      background: #1a1f2e;
+    }
+
+    /* Upload Zone */
+    .upload-zone {
+      border: 2px dashed #475569;
+      border-radius: 16px;
+      padding: 60px 40px;
+      text-align: center;
+      margin-bottom: 40px;
+      transition: all 0.3s ease;
+      background: #0f172a;
+      cursor: pointer;
+    }
+
+    .upload-zone:hover, .upload-zone.dragover {
+      border-color: #6366f1;
+      background: #1e293b;
+      transform: scale(1.01);
+    }
+
+    .upload-zone.uploading {
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    .upload-icon {
+      font-size: 3em;
+      margin-bottom: 20px;
+      color: #6366f1;
+      opacity: 0.8;
+    }
+
+    .upload-zone h2 {
+      color: #e2e8f0;
+      margin-bottom: 10px;
+      font-size: 1.5em;
+      font-weight: 600;
+    }
+
+    .upload-zone p {
+      color: #94a3b8;
+      margin-bottom: 20px;
+    }
+
+    .upload-btn {
+      display: inline-block;
+      padding: 15px 40px;
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.1em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+    }
+
+    .upload-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+      background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+    }
+
+    #file-input {
+      display: none;
+    }
+
+    /* Progress bar */
+    .progress-container {
+      display: none;
+      margin-top: 20px;
+    }
+
+    .progress-bar {
+      height: 8px;
+      background: #1e293b;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 100%);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    .progress-text {
+      margin-top: 10px;
+      color: #94a3b8;
+      font-size: 0.9em;
+    }
+
+    /* Files List */
+    .files-section h2 {
+      color: #e2e8f0;
+      margin-bottom: 20px;
+      font-size: 1.5em;
+      font-weight: 600;
+    }
+
+    .files-list {
+      display: grid;
+      gap: 15px;
+    }
+
+    .file-card {
+      background: #0f172a;
+      border-radius: 12px;
+      padding: 20px 25px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      transition: all 0.3s ease;
+      border: 1px solid #2d3748;
+    }
+
+    .file-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+      border-color: #475569;
+      background: #1e293b;
+    }
+
+    .file-icon {
+      font-size: 1.8em;
+      width: 60px;
+      height: 60px;
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .file-info {
+      flex: 1;
+    }
+
+    .file-name {
+      font-size: 1.2em;
+      font-weight: 600;
+      color: #e2e8f0;
+      margin-bottom: 5px;
+    }
+
+    .file-meta {
+      color: #94a3b8;
+      font-size: 0.9em;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .file-stats {
+      display: flex;
+      gap: 15px;
+      flex-shrink: 0;
+    }
+
+    .stat-badge {
+      padding: 8px 15px;
+      border-radius: 8px;
+      font-size: 0.85em;
+      font-weight: 600;
+    }
+
+    .stat-flows {
+      background: rgba(99, 102, 241, 0.15);
+      color: #818cf8;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+    }
+
+    .stat-anomalies {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .stat-critical {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .file-actions {
+      display: flex;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .btn-view {
+      padding: 10px 25px;
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      font-size: 0.9em;
+    }
+
+    .btn-view:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+    }
+
+    .btn-delete {
+      padding: 10px 15px;
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .btn-delete:hover {
+      background: rgba(239, 68, 68, 0.25);
+      border-color: rgba(239, 68, 68, 0.5);
+    }
+
+    .status-badge {
+      padding: 5px 12px;
+      border-radius: 8px;
+      font-size: 0.8em;
+      font-weight: 600;
+    }
+
+    .status-completed {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .status-error {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .status-processing {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 40px;
+      color: #94a3b8;
+    }
+
+    .empty-state .icon {
+      font-size: 3em;
+      margin-bottom: 20px;
+      opacity: 0.5;
+      color: #475569;
+    }
+
+    .empty-state h3 {
+      font-size: 1.3em;
+      margin-bottom: 10px;
+      color: #e2e8f0;
+    }
+
+    /* Toast notifications */
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      padding: 15px 25px;
+      background: #1e293b;
+      color: #e2e8f0;
+      border-radius: 12px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+      border: 1px solid #2d3748;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 1000;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .toast.success {
+      background: rgba(16, 185, 129, 0.2);
+      border-color: rgba(16, 185, 129, 0.4);
+      color: #34d399;
+    }
+
+    .toast.error {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #f87171;
+    }
+
+    @media (max-width: 768px) {
+      .file-card {
+        flex-direction: column;
+        text-align: center;
+      }
+      .file-stats {
+        justify-content: center;
+      }
+      .file-actions {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>yytran - traffic analyzer</h1>
+      <p>Загрузите PCAP/PCAPNG файл для анализа сетевого трафика</p>
+    </div>
+
+    <div class="content">
+      <!-- Upload Zone -->
+      <div class="upload-zone" id="upload-zone">
+        <div class="upload-icon"></div>
+        <h2>Перетащите файл сюда</h2>
+        <p>или нажмите для выбора файла</p>
+        <button class="upload-btn" onclick="document.getElementById('file-input').click()">
+          Выбрать файл
+        </button>
+        <input type="file" id="file-input" accept=".pcap,.pcapng">
+        
+        <div class="progress-container" id="progress-container">
+          <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+          </div>
+          <div class="progress-text" id="progress-text">Загрузка...</div>
+        </div>
+      </div>
+
+      <!-- Files List -->
+      <div class="files-section">
+        <h2>Загруженные файлы</h2>
+        
+        {% if uploads %}
+        <div class="files-list" id="files-list">
+          {% for upload in uploads %}
+          <div class="file-card" id="file-{{ upload.id }}">
+            <div class="file-icon"></div>
+            <div class="file-info">
+              <div class="file-name">{{ upload.filename }}</div>
+              <div class="file-meta">
+                <span>{{ upload.upload_time[:16].replace('T', ' ') }}</span>
+                <span class="status-badge status-{{ upload.status }}">
+                  {% if upload.status == 'completed' %}Завершено
+                  {% elif upload.status == 'error' %}Ошибка
+                  {% else %}Обработка
+                  {% endif %}
+                </span>
+              </div>
+            </div>
+            <div class="file-stats">
+              <span class="stat-badge stat-flows">{{ upload.total_flows }} потоков</span>
+              <span class="stat-badge stat-anomalies">{{ upload.anomalies }} аномалий</span>
+              {% if upload.critical > 0 %}
+              <span class="stat-badge stat-critical">{{ upload.critical }} критических</span>
+              {% endif %}
+            </div>
+            <div class="file-actions">
+              <a href="/analysis/{{ upload.id }}" class="btn-view">Просмотр</a>
+              <button class="btn-delete" onclick="deleteAnalysis('{{ upload.id }}')">Удалить</button>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+          <div class="icon"></div>
+          <h3>Нет загруженных файлов</h3>
+          <p>Загрузите PCAP файл для начала анализа</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const uploadZone = document.getElementById('upload-zone');
+    const fileInput = document.getElementById('file-input');
+    const progressContainer = document.getElementById('progress-container');
+    const progressFill = document.getElementById('progress-fill');
+    const progressText = document.getElementById('progress-text');
+
+    // Drag and drop
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      uploadZone.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+      uploadZone.addEventListener(eventName, () => uploadZone.classList.add('dragover'), false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      uploadZone.addEventListener(eventName, () => uploadZone.classList.remove('dragover'), false);
+    });
+
+    uploadZone.addEventListener('drop', handleDrop, false);
+    fileInput.addEventListener('change', handleFileSelect, false);
+
+    function handleDrop(e) {
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        uploadFile(files[0]);
+      }
+    }
+
+    function handleFileSelect(e) {
+      if (e.target.files.length > 0) {
+        uploadFile(e.target.files[0]);
+      }
+    }
+
+    function uploadFile(file) {
+      const allowedExtensions = ['pcap', 'pcapng'];
+      const ext = file.name.split('.').pop().toLowerCase();
+      
+      if (!allowedExtensions.includes(ext)) {
+        showToast('Разрешены только .pcap и .pcapng файлы', 'error');
+        return;
+      }
+
+      uploadZone.classList.add('uploading');
+      progressContainer.style.display = 'block';
+      progressFill.style.width = '0%';
+      progressText.textContent = 'Загрузка файла...';
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const xhr = new XMLHttpRequest();
+      
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          const percent = (e.loaded / e.total) * 50;
+          progressFill.style.width = percent + '%';
+        }
+      });
+
+      xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+          if (xhr.status === 200) {
+            progressFill.style.width = '100%';
+            progressText.textContent = 'Анализ завершен!';
+            
+            const response = JSON.parse(xhr.responseText);
+            showToast('Файл успешно загружен и проанализирован!', 'success');
+            
+            setTimeout(() => {
+              window.location.href = response.redirect;
+            }, 1000);
+          } else {
+            let errorMsg = 'Ошибка загрузки';
+            try {
+              const response = JSON.parse(xhr.responseText);
+              errorMsg = response.error || errorMsg;
+            } catch(e) {}
+            showToast(errorMsg, 'error');
+            resetUploadZone();
+          }
+        }
+      };
+
+      progressFill.style.width = '50%';
+      progressText.textContent = 'Анализ трафика...';
+
+      xhr.open('POST', '/upload', true);
+      xhr.send(formData);
+    }
+
+    function resetUploadZone() {
+      uploadZone.classList.remove('uploading');
+      progressContainer.style.display = 'none';
+      fileInput.value = '';
+    }
+
+    function deleteAnalysis(id) {
+      if (!confirm('Удалить этот анализ?')) return;
+      
+      fetch('/delete/' + id, { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            document.getElementById('file-' + id).remove();
+            showToast('Анализ удален', 'success');
+            
+            // Check if list is empty
+            const list = document.getElementById('files-list');
+            if (list && list.children.length === 0) {
+              location.reload();
+            }
+          }
+        })
+        .catch(() => showToast('Ошибка удаления', 'error'));
+    }
+
+    function showToast(message, type) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = 'toast ' + type + ' show';
+      
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+  </script>
+</body>
+</html>
